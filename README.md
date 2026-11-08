@@ -17,6 +17,23 @@ Each run:
 LinkedIn is used **only through public web search results**. Nothing scrapes or automates
 LinkedIn itself.
 
+### Which API provides web search
+
+Web search runs through the **Conversations API** (`client.beta.conversations.start_async`)
+with a `WebSearchTool`. Two other paths do not work and should not be reintroduced:
+
+| Path | Result |
+| --- | --- |
+| `Agent` + `RemoteSession` (Agents API) | `403 Creating agents is not available for this organization. Use Managed Agents instead.` |
+| `chat.complete` with `tools=[{"type": "web_search"}]` | `400 WebSearchTool connector is not supported` |
+
+The Agents API path also creates a remote agent per run and never deletes it, which would leak
+one agent per scheduled execution. The Conversations API is stateless when called with
+`store=False`, which is what this project uses.
+
+If your organization *does* allow agent creation, the Conversations path still works — it is
+not a downgrade.
+
 ## CSV schema
 
 Columns are fixed and always in this order:

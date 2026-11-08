@@ -43,25 +43,28 @@ def test_workflow_is_discoverable() -> None:
     assert definition.name == "job-search"
 
 
-def test_runner_output_is_joined_from_text_chunks() -> None:
-    """Runner.run returns content chunks; the helper must not read .final_output."""
-    from mistralai.client.models import TextChunk
-    from worker.workflows.activities import _join_text
+def test_web_search_uses_conversations_api_with_search_tool() -> None:
+    """Web search must go through a path the org actually supports.
 
-    chunks = [TextChunk(type="text", text="[{\"position\": "), TextChunk(type="text", text="\"x\"}]")]
-    assert _join_text(chunks) == '[{"position": "x"}]'
-    assert _join_text([]) == ""
-
-
-def test_agent_runner_is_called_with_an_explicit_session() -> None:
-    """Built-in tools need a RemoteSession; it must not be incidental."""
-    from mistralai.workflows.plugins.mistralai import Runner
-
-    source = inspect.getsource(Runner.run)
-    assert "session: Session | None = None" in source
+    Creating agents is disabled for some organizations, and WebSearchTool is
+    rejected on /chat/completions. The Conversations API is the supported
+    route, and it must carry the tool or the agent silently loses web access.
+    """
     from worker.workflows import activities
 
-    assert "RemoteSession()" in inspect.getsource(activities)
+    source = inspect.getsource(activities)
+    assert "conversations.start_async" in source
+    assert "WebSearchTool()" in source
+    assert "Runner.run" not in source
+    assert "RemoteSession" not in source
+    assert "Agent(" not in source
+
+
+def test_web_search_request_carries_the_search_tool() -> None:
+    """The tool must be a web_search tool, not a plain function tool."""
+    from mistralai.client.models.websearchtool import WebSearchTool
+
+    assert WebSearchTool().type == "web_search"
 
 
 def test_entrypoint_has_no_inline_non_determinism() -> None:

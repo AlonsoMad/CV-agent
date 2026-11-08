@@ -12,9 +12,8 @@ import logging
 from datetime import timedelta
 
 import mistralai.workflows as workflows
-from mistralai.client.models import TextChunk
 from mistralai.client.models.websearchtool import WebSearchTool
-from mistralai.workflows.plugins.mistralai import Agent, RemoteSession, Runner
+from mistralai.workflows.plugins.mistralai import get_mistral_client
 
 from .candidate import candidate_to_json, load_candidate
 from .models import JobOpening
@@ -66,31 +65,38 @@ Return ONLY a bare JSON array of the openings that passed, with no prose and no 
 fences."""
 
 
-def _join_text(outputs: list) -> str:
-    """Collect assistant text from a Runner.run result.
+async def _run_web_search(instructions: str, user_input: str) -> str:
+    """Run one web-search-backed turn and return the assistant text.
 
-    ``Runner.run`` returns a list of content chunks, not an object with
-    ``final_output``; only ``TextChunk`` items carry the model's prose.
+    The Agents API is disabled for some organizations ("Creating agents is not
+    available for this organization. Use Managed Agents instead"), and
+    ``WebSearchTool`` is rejected on ``/v1/chat/completions`` ("WebSearchTool
+    connector is not supported"). The Conversations API is the supported path
+    that still gives us web search, so this calls it directly.
+
+    Do not replace this with a chat completion without the tool: that silently
+    loses web access and the whole workflow becomes LLM guesswork.
     """
-    return "".join(
-        output.text for output in outputs if isinstance(output, TextChunk) and output.text
-    )
-
-
-async def _run_agent(name: str, instructions: str, inputs: str, max_turns: int) -> str:
-    agent = Agent(
-        name=name,
+    client = get_mistral_client()
+    response = await client.beta.conversations.start_async(
+        inputs=[{"role": "user", "content": user_input}],
         model=DEFAULT_MODEL,
         instructions=instructions,
         tools=[WebSearchTool()],
+        store=False,
     )
-    outputs = await Runner.run(
-        agent=agent,
-        inputs=inputs,
-        session=RemoteSession(),
-        max_turns=max_turns,
-    )
-    return _join_text(outputs)
+    texts: list[str] = []
+    for output in response.outputs:
+        if getattr(output, "type", None) != "message.output":
+            continue
+        content = output.content
+        if isinstance(content, str):
+            texts.append(content)
+        elif isinstance(content, list):
+            texts.extend(
+                chunk.text for chunk in content if getattr(chunk, "type", None) == "text"
+            )
+    return "".join(texts)
 
 
 @workflows.activity(start_to_close_timeout=timedelta(seconds=1200), retry_policy_max_attempts=2)
@@ -105,28 +111,24 @@ async def load_candidate_activity(cv_variant: str, profile_override: dict | None
 @workflows.activity(start_to_close_timeout=timedelta(seconds=1800), retry_policy_max_attempts=2)
 async def search_openings_activity(candidate_json: str, max_openings: int) -> str:
     """Run the web-search agent and return its raw response text."""
-    return await _run_agent(
-        name="job-search-web-searcher",
+    return await _run_web_search(
         instructions=SEARCH_INSTRUCTIONS,
-        inputs=(
+        user_input=(
             f"{candidate_json}\n\nFind up to {max_openings} current, real job openings that fit "
             "this candidate. Return only the bare JSON array."
         ),
-        max_turns=12,
     )
 
 
 @workflows.activity(start_to_close_timeout=timedelta(seconds=1200), retry_policy_max_attempts=2)
 async def validate_openings_activity(candidate_json: str, openings_json: str) -> str:
     """Re-verify each opening against the web and return its raw response text."""
-    return await _run_agent(
-        name="job-fit-validator",
+    return await _run_web_search(
         instructions=VALIDATION_INSTRUCTIONS,
-        inputs=(
+        user_input=(
             f"Candidate profile:\n{candidate_json}\n\nOpenings to validate:\n{openings_json}\n\n"
             "Return only the bare JSON array of validated openings."
         ),
-        max_turns=8,
     )
 
 
