@@ -1,0 +1,55 @@
+name: "Alonso Madroñal"
+email: "alonsomadronal@gmail.com"
+phone: "+34 644 36 11 92"
+github: "https://github.com/AlonsoMad"
+location: "Madrid, Spain"
+open_to_relocation: true
+
+summary: >-
+  AI and forward deployed engineer who takes agentic systems from prototype to
+  production, deploys them into client environments, and drives adoption through
+  training and iterative rollout. Comfortable working European and US Eastern
+  time zones, on-site work and travel.
+
+target_roles:
+  - "Forward Deployed Engineer"
+  - "AI Engineer"
+  - "Applied AI Engineer"
+  - "Solutions Engineer (AI)"
+
+years_of_experience: 1.5
+
+key_skills:
+  - "Agentic AI systems (LangGraph, Google ADK, Dagster)"
+  - "RAG (FAISS) and Graph-RAG"
+  - "MCP integration layers"
+  - "Python"
+  - "SQL"
+  - "Bash"
+  - "Docker and microservices"
+  - "REST / API integrations"
+  - "Azure (Foundry, AKS, VMs, Blob, IAM)"
+  - "AWS (Athena, QuickSight, S3)"
+  - "NLP and LLM evaluation (precision, recall, NDCG)"
+  - "Client-facing solution design and stakeholder management"
+
+languages:
+  Spanish: "native"
+  English: "C2"
+  Italian: "B2"
+
+preferences:
+  remote: "open (hybrid or remote preferred)"
+  locations:
+    - "Madrid"
+    - "Barcelona"
+    - "London"
+    - "Paris"
+    - "Amsterdam"
+    - "Remote (EU)"
+    - "US East Coast"
+  industries:
+    - "AI"
+    - "Software"
+    - "Consulting"
+    - "Infrastructure / Construction tech"
