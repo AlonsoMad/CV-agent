@@ -22,12 +22,14 @@ class CandidateProfile(BaseModel):
 
 
 class JobOpening(BaseModel):
+    opening_id: str = ""
     position: str
     company: str
     location: str = ""
     description: str = ""
     validation_criteria: str = ""
-    match_score: int = 0
+    match_score: int = Field(default=0, ge=0, le=100)
+    contact_kind: str = ""
     source_url: str = ""
     contact_email: str = ""
     linkedin_url: str = ""
@@ -42,7 +44,9 @@ class JobSearchInput(BaseModel):
 
 
 class JobSearchOutput(BaseModel):
+    schema_version: str = "1"
     cv_variant: str
     generated_at: str
+    count: int
     openings: list[JobOpening]
     csv: str
